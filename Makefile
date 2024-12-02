@@ -7,7 +7,7 @@ lex.yy.c : ${PROG}.l
 
 ${PROG} : lex.yy.c
 	gcc -o ${PROG} lex.yy.c -lfl
-	./${PROG} <test_${PROG}.csv
+	./${PROG} test_bts.csv
 
 
 clean:
