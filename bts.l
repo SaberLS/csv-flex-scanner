@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define MAX_COLUMNS 50
 #define MAX_FIELD_LENGTH 128
@@ -11,11 +12,40 @@ int column_count = 0;
 int column_amount = 0;
 int line_count = 0;
 
-char target_phone[] = "501501502";
 int match_count = 0;
 int match_lines[MAX_COLUMNS];
 char headers[MAX_COLUMNS][MAX_FIELD_LENGTH];
 char current_line[MAX_COLUMNS][MAX_FIELD_LENGTH];
+
+// Struktura przechowująca filtr
+struct filter {
+    int column_I[MAX_FIELD_LENGTH];
+    char value[MAX_FIELD_LENGTH];
+} filters[MAX_COLUMNS];
+
+int filter_count = 0;
+
+void printHeaders() {
+    printf("| ");
+    for(int i = 0; i < column_amount; i++){
+        printf("%d: %s |", i, headers[i]);
+    }
+}
+
+// true if whole line meets requirements of filters false if any current_line elment doesn't
+bool checkLine() {
+    for(int i = 0; i < filter_count; i++){
+        int column_I = *filters[i].column_I;
+
+        // check if filter.column_I is in current_line array bounds
+        if(column_I <= column_amount){
+            // if current line does not fill the filter requirements return false
+            if(strcmp(current_line[column_I], filters[i].value) != 0)
+                return false;
+        }
+    }
+    return true;
+}
 
 %}
 
@@ -41,8 +71,38 @@ ENDLINE \n
     // Koniec linii - przetwarzamy i wypisujemy rekord
     if(line_count == 0){
         column_amount = column_count;
-    } else {
-        if(strcmp(current_line[5], target_phone) == 0){
+            // Pobieramy filtry
+        printf("Wprowadź filtry w postaci: <nazwa kolumny> <wartość> (wpisz 'koniec' aby zakończyć):\n");
+        while (1) {
+            printf("Możliwe wartości: \n");
+            printHeaders();
+            printf("\n");
+
+           int column_I = -1;
+           char value[MAX_FIELD_LENGTH];
+
+            printf("Numer kolumny: ");
+            scanf("%d", &column_I);
+            if(column_I < 0){
+                break;
+            }
+
+            printf("Wartość: ");
+            scanf("%s", value);
+
+            // Dodajemy filtr
+            *filters[filter_count].column_I = column_I;
+            strcpy(filters[filter_count].value, value);
+            filter_count++;
+
+            printf("--------------------------\nActive Filters: \n");
+            for(int i = 0; i < filter_count; i++){
+                printf("%d: %s \n", *filters[i].column_I, filters[i].value);
+            }
+            printf("--------------------------\n");
+
+    } } else {
+        if(checkLine()){
             match_lines[match_count] = line_count + 1; // + 1 bo liczy linie od 0 bez nagłówka
             match_count++;
             printf("----------------------------\n");
@@ -85,7 +145,7 @@ int main(int argc, char **argv) {
         for(int i = 0; i < match_count - 1; i++){
             printf("%d, ", match_lines[i]);
         }
-        printf("%d\n", match_lines[match_count - 1]); //żeby nie było , na końcu
+        printf("%d\n", match_lines[match_count - 1]); // żeby nie było , na końcu
     fclose(file);
     return 0;
 }
