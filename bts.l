@@ -19,7 +19,7 @@ char current_line[MAX_COLUMNS][MAX_FIELD_LENGTH];
 
 // Struktura przechowująca filtr
 struct filter {
-    int column_I[MAX_FIELD_LENGTH];
+    int column_I;                // Indeks kolumny - poprawione z tablicy wskaźników na int
     char value[MAX_FIELD_LENGTH];
 } filters[MAX_COLUMNS];
 
@@ -27,26 +27,35 @@ int filter_count = 0;
 
 void printHeaders() {
     printf("| ");
-    for(int i = 0; i < column_amount; i++){
-        printf("%d: %s |", i, headers[i]);
+    for (int i = 0; i < column_amount; i++) {
+        printf(" %s |", headers[i]);
     }
+    printf("\n");
 }
 
-// true if whole line meets requirements of filters false if any current_line elment doesn't
-bool checkLine() {
-    for(int i = 0; i < filter_count; i++){
-        int column_I = *filters[i].column_I;
+void printActiveFilters() {
+    printf("\n--------------------------\nAktywne filtry:\n");
+    for (int i = 0; i < filter_count; i++) {
+        printf("%s: %s\n", headers[filters[i].column_I], filters[i].value);
+    }
+    printf("--------------------------\n");
+}
 
-        // check if filter.column_I is in current_line array bounds
-        if(column_I <= column_amount){
-            // if current line does not fill the filter requirements return false
-            if(strcmp(current_line[column_I], filters[i].value) != 0)
+// Funkcja sprawdzająca zgodność wiersza z filtrami
+bool checkLine() {
+    for (int i = 0; i < filter_count; i++) {
+        int column_I = filters[i].column_I;
+
+        // Sprawdzanie, czy indeks filtra mieści się w zakresie kolumn
+        if (column_I < column_amount) {
+            // Jeśli wiersz nie spełnia kryteriów filtra, zwróć false
+            if (strcmp(current_line[column_I], filters[i].value) != 0) {
                 return false;
+            }
         }
     }
     return true;
 }
-
 %}
 
 %option noyywrap
@@ -56,96 +65,107 @@ ENDLINE \n
 
 %%
 {FIELD} {
-    if(line_count == 0){
-        strcpy(headers[column_count],yytext);
+    if (line_count == 0) {
+        strcpy(headers[column_count], yytext);
     } else {
-        strncpy(current_line[column_count],yytext, MAX_FIELD_LENGTH);
+        strncpy(current_line[column_count], yytext, MAX_FIELD_LENGTH);
     }
 }
 {SEPARATOR} {
-    // Separator - przechodzimy do następnego pola
-    column_count++;
+    column_count++; // Separator - przechodzimy do następnej kolumny
 }
-
 {ENDLINE} {
-    // Koniec linii - przetwarzamy i wypisujemy rekord
-    if(line_count == 0){
+    if (line_count == 0) {
         column_amount = column_count;
-            // Pobieramy filtry
-        printf("Wprowadź filtry w postaci: <nazwa kolumny> <wartość> (wpisz 'koniec' aby zakończyć):\n");
+
+        // Pobieranie filtrów od użytkownika
+        printf("Wprowadź filtry w postaci: <numer kolumny> <wartość> (wpisz '-1', aby zakończyć):\n");
         while (1) {
-            printf("Możliwe wartości: \n");
-            printHeaders();
+            printf("Możliwe wartości:\n");
+            for (int i = 0; i < column_amount; i++) {
+                printf("%d: %s\n", i, headers[i]);
+            }
             printf("\n");
 
-           int column_I = -1;
-           char value[MAX_FIELD_LENGTH];
+            int column_I = -1;
+            char value[MAX_FIELD_LENGTH];
 
             printf("Numer kolumny: ");
             scanf("%d", &column_I);
-            if(column_I < 0){
+            if (column_I < 0) {
                 break;
             }
 
             printf("Wartość: ");
             scanf("%s", value);
 
-            // Dodajemy filtr
-            *filters[filter_count].column_I = column_I;
+            // Dodanie filtra
+            filters[filter_count].column_I = column_I;
             strcpy(filters[filter_count].value, value);
             filter_count++;
 
-            printf("--------------------------\nActive Filters: \n");
-            for(int i = 0; i < filter_count; i++){
-                printf("%d: %s \n", *filters[i].column_I, filters[i].value);
-            }
-            printf("--------------------------\n");
+            printActiveFilters();
 
-    } } else {
-        if(checkLine()){
-            match_lines[match_count] = line_count + 1; // + 1 bo liczy linie od 0 bez nagłówka
+        }
+    } else {
+        // Sprawdzenie, czy wiersz spełnia kryteria filtrów
+        if (checkLine()) {
+            match_lines[match_count] = line_count + 1; // +1, bo liczy linie od 0 bez nagłówka
             match_count++;
+
             printf("----------------------------\n");
-            printf("linia nr.: %d\n", line_count + 1);
-            for(int i = 0; i < column_amount; i++){
+            printf("Linia nr: %d\n", line_count + 1);
+            for (int i = 0; i < column_amount; i++) {
                 printf("%s: %s\n", headers[i], current_line[i]);
             }
-            printf("----------------------------");
+            printf("----------------------------\n");
         }
     }
     line_count++;
     column_count = 0;
 
-    // overrite current line elements with defaults
-    for(int i = 0; i < column_amount; i++){
+    // Wyczyszczenie bieżącej linii
+    for (int i = 0; i < column_amount; i++) {
         strcpy(current_line[i], "");
     }
 }
-
 %%
 
 int main(int argc, char **argv) {
+    FILE *file;
+
+    // Jeśli brak argumentu, prosimy użytkownika o nazwę pliku
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <csv_file>\n", argv[0]);
-        return 1;
-    }
+        char filename[MAX_FIELD_LENGTH];
 
-    FILE *file = fopen(argv[1], "r");
-    if (!file) {
-        perror("File opening failed");
-        return 1;
-    }
+        // Prośba o podanie nazwy pliku
+        printf("Brak nazwy pliku. Proszę podać nazwę pliku CSV: ");
+        scanf("%s", filename);
 
-    printf("Enter phone number to search: ");
-    //scanf("%s", target_phone);
+        // Próba otwarcia pliku podanego przez użytkownika
+        file = fopen(filename, "r");
+        if (!file) {
+            perror("Nie udało się otworzyć pliku");
+            return 1;
+        }
+    } else {
+        // Jeśli argument jest przekazany, otwieramy plik
+        file = fopen(argv[1], "r");501501502
+        if (!file) {
+            perror("Nie udało się otworzyć pliku");
+            return 1;
+        }
+    }
 
     yyin = file;
     yylex();
-    printf("\ndopasowano: %d\n", match_count);
-        for(int i = 0; i < match_count - 1; i++){
-            printf("%d, ", match_lines[i]);
-        }
-        printf("%d\n", match_lines[match_count - 1]); // żeby nie było , na końcu
+    printf("\nDopasowano: %d\n", match_count);
+    for (int i = 0; i < match_count - 1; i++) {
+        printf("%d, ", match_lines[i]);
+    }
+    if (match_count > 0) {
+        printf("%d\n", match_lines[match_count - 1]); // Unikamy przecinka na końcu
+    }
     fclose(file);
     return 0;
 }
