@@ -1,4 +1,5 @@
 %{
+// bts.l
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -83,7 +84,7 @@ void printCurrentLine() {
     match_count++; // Zwiększenie licznika pasujących linii
 
     printf("----------------------------\n");
-    printf("Linia nr: %d\n", line_count + 1);
+    printf("Wiersz nr: %d\n", line_count + 1);
     for (int i = 0; i < displayed_count; i++) { // Wyświetlanie wybranych kolumn
         int displayedID = displayed_columns[i];
         printf("%s: %s\n", headers.strings[displayedID], current_line.strings[displayedID]);
@@ -140,8 +141,6 @@ void IgnoreColumn(int column_I) {
 }
 
 %}
-
-%option noyywrap
 FIELD [^;\n]+
 SEPARATOR ;
 ENDLINE \n
@@ -187,6 +186,7 @@ ENDLINE \n
         }
 
         // Inicjalizacja kolumn do wyświetlania
+        // Początkowo wszystkie kolumny są wyświetlane
         for (int i = 0; i < column_amount; i++) {
             displayed_columns[i] = i;
         }
@@ -241,14 +241,18 @@ int main(int argc, char **argv) {
 
     yyin = file; // Przypisanie pliku do lexera
     yylex();     // Rozpoczęcie analizy
+
     printf("\nDopasowano: %d\n", match_count);
+    // Wyświetl indeksy wszystkich dopasowanych lini
     for (int i = 0; i < match_count - 1; i++) {
         printf("%d, ", match_lines[i]);
     }
     if (match_count > 0) {
         printf("%d\n", match_lines[match_count - 1]); // Ostatnia linia bez przecinka
     }
+
     fclose(file); // Zamknięcie pliku
+    // Zwalnianie pamięci
     freeStringArray(&headers);
     freeStringArray(&current_line);
     return 0;
