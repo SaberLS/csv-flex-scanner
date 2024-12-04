@@ -1,7 +1,9 @@
 // string_array.h
-#include <stdlib.h>
+
 #ifndef STRING_ARRAY_H
 #define STRING_ARRAY_H
+
+#include <stddef.h>
 
 // Definicja struktury przechowującej tablicę stringów
 typedef struct {

@@ -8,9 +8,9 @@
 
 // Inicjalizacja struktury
 void initStringArray(StringArray *arr) {
-    arr->strings = NULL;  // Na początku brak elementów
+    arr->strings = (char **)malloc(10 * sizeof(char *));  // Alokacja początkowej pamięci
     arr->size = 0;
-    arr->capacity = 0;
+    arr->capacity = 10;
 }
 
 // Zwalnianie pamięci zajmowanej przez tablicę
@@ -32,7 +32,7 @@ void addString(StringArray *arr, const char *str) {
         arr->strings = realloc(arr->strings, new_capacity * sizeof(char*));
         if (!arr->strings) {
             perror("Failed to reallocate memory");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         arr->capacity = new_capacity;
     }
@@ -41,7 +41,7 @@ void addString(StringArray *arr, const char *str) {
     arr->strings[arr->size] = strdup(str);
     if (!arr->strings[arr->size]) {
         perror("Failed to allocate memory for string");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     arr->size++;
 }
@@ -65,7 +65,40 @@ void removeString(StringArray *arr, size_t index) {
 
 // Wyświetlanie zawartości tablicy
 void printStringArray(const StringArray *arr) {
-    for (size_t i = 0; i < arr->size; ++i) {
-        printf("%s\n", arr->strings[i]);
+    for (size_t i = 0; i < arr->size; i++) {
+        printf("%ld: %s\n", i, arr->strings[i]);
     }
+}
+
+// Wstaw string w określonym indeksie
+void insertString(StringArray *arr, size_t index, const char *str) {
+    // Sprawdzenie, czy indeks mieści się w dozwolonym zakresie
+    if (index > arr->size) {
+        // Jeśli indeks przekracza rozmiar, ustawiamy indeks na rozmiar (dodanie na końcu)
+        index = arr->size;
+    }
+
+    // Sprawdzamy, czy tablica ma wystarczającą pojemność
+    if (arr->size >= arr->capacity) {
+        arr->capacity *= 2;
+        arr->strings = (char **)realloc(arr->strings, arr->capacity * sizeof(char *));
+    }
+
+    // Przesuwamy wszystkie elementy w prawo, aby zrobić miejsce
+    for (size_t i = arr->size; i > index; i--) {
+        arr->strings[i] = arr->strings[i - 1];
+    }
+
+    // Jeśli indeks przekroczył aktualny rozmiar, wstawiamy pusty string w brakujących miejscach
+    for (size_t i = arr->size; i < index; i++) {
+        arr->strings[i] = (char *)malloc(1);  // Alokujemy miejsce na pusty string
+        arr->strings[i][0] = '\0';           // Ustawiamy pusty string
+    }
+
+    // Wstawiamy nowy string
+    arr->strings[index] = (char *)malloc(strlen(str) + 1);
+    strcpy(arr->strings[index], str);
+
+    // Zwiększamy rozmiar
+    arr->size++;
 }
