@@ -3,10 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include "string_array.h"
 
-#define MAX_COLUMNS 50
+#define MAX_COLUMNS 100
 #define MAX_FIELD_LENGTH 128
-#define MAX_HEADER_LENGTH 256
 
 int column_count = 0;
 int column_amount = 0;
@@ -14,23 +14,41 @@ int line_count = 0;
 
 int match_count = 0;
 int match_lines[MAX_COLUMNS];
+
 char headers[MAX_COLUMNS][MAX_FIELD_LENGTH];
 char current_line[MAX_COLUMNS][MAX_FIELD_LENGTH];
 
+int ignored_columns[MAX_COLUMNS];
+int ignored_count = 0;
 // Struktura przechowująca filtr
 struct filter {
-    int column_I;                // Indeks kolumny - poprawione z tablicy wskaźników na int
+    int column_I;                // Indeks kolumny
     char value[MAX_FIELD_LENGTH];
 } filters[MAX_COLUMNS];
 
 int filter_count = 0;
+// Dodanie filtra
+void addFilter(int column_I, char *value) {
+    filters[filter_count].column_I = column_I;
+    strcpy(filters[filter_count].value, value);
+    filter_count++;
+}
 
-void printHeaders() {
-    printf("| ");
-    for (int i = 0; i < column_amount; i++) {
-        printf(" %s |", headers[i]);
+bool getFilter() {
+    int column_I = -1;
+    char value[MAX_FIELD_LENGTH];
+
+    printf("<numer kolumny>: ");
+    scanf("%d", &column_I);
+    if (column_I < 0) {
+        return false;
     }
-    printf("\n");
+
+    printf("<wartość>: ");
+    scanf("%s", value);
+
+    addFilter(column_I, value);
+    return true;
 }
 
 void printActiveFilters() {
@@ -39,6 +57,35 @@ void printActiveFilters() {
         printf("%s: %s\n", headers[filters[i].column_I], filters[i].value);
     }
     printf("--------------------------\n");
+}
+
+void printHeaders() {
+    for (int i = 0; i < column_amount; i++) {
+        printf("%d: %s\n", i, headers[i]);
+    }
+    printf("\n");
+}
+
+void clean() {
+    column_count = 0;
+
+    // Wyczyszczenie bieżącej linii
+    for (int i = 0; i < column_amount; i++) {
+        strcpy(current_line[i], "");
+    }
+}
+
+
+void printCurrentLine() {
+    match_lines[match_count] = line_count + 1; // +1, bo liczy linie od 0 bez nagłówka
+    match_count++;
+
+    printf("----------------------------\n");
+    printf("Linia nr: %d\n", line_count + 1);
+    for (int i = 0; i < column_amount; i++) {
+        printf("%s: %s\n", headers[i], current_line[i]);
+    }
+    printf("----------------------------\n");
 }
 
 // Funkcja sprawdzająca zgodność wiersza z filtrami
@@ -78,56 +125,60 @@ ENDLINE \n
     if (line_count == 0) {
         column_amount = column_count;
 
-        // Pobieranie filtrów od użytkownika
-        printf("Wprowadź filtry w postaci: <numer kolumny> <wartość> (wpisz '-1', aby zakończyć):\n");
-        while (1) {
+        while (true) {
+            // Pobieranie filtrów od użytkownika
+            printf("Wprowadź filtry w postaci: <numer kolumny> <wartość> (wpisz '-1', aby zakończyć):\n");
             printf("Możliwe wartości:\n");
-            for (int i = 0; i < column_amount; i++) {
-                printf("%d: %s\n", i, headers[i]);
-            }
+            printHeaders();
             printf("\n");
 
-            int column_I = -1;
-            char value[MAX_FIELD_LENGTH];
+            if(!getFilter()){
+                break;
+            };
 
-            printf("Numer kolumny: ");
+            printActiveFilters();
+        }
+
+        while(true){
+            printf("Podaj numery kolumn które mają zostać zignorowane (wpisz '-1', aby zakończyć):\n");
+            printf("Możliwe wartości:\n");
+            printHeaders();
+            int column_I = -1;
             scanf("%d", &column_I);
             if (column_I < 0) {
                 break;
             }
+            ignored_columns[ignored_count] = column_I;
+        }
+        int displayed_columns[column_amount];
+        int displayed_count = 0;
+        for(int i = 0; i < column_amount; i++){
+            bool mark = true;
+            for(int j = 0; j < ignored_count; j++){
+                if(i == ignored_columns[j]){
+                    mark = false;
+                    break;
+                }
+            }
+            if(mark){
+                displayed_columns[displayed_count] = i;
+                displayed_count++;
+            }
+        }
 
-            printf("Wartość: ");
-            scanf("%s", value);
-
-            // Dodanie filtra
-            filters[filter_count].column_I = column_I;
-            strcpy(filters[filter_count].value, value);
-            filter_count++;
-
-            printActiveFilters();
-
+        for(int i = 0; i < displayed_count; i++){
+            printf("%s\n", headers[displayed_columns[i]]);
         }
     } else {
         // Sprawdzenie, czy wiersz spełnia kryteria filtrów
         if (checkLine()) {
-            match_lines[match_count] = line_count + 1; // +1, bo liczy linie od 0 bez nagłówka
-            match_count++;
-
-            printf("----------------------------\n");
-            printf("Linia nr: %d\n", line_count + 1);
-            for (int i = 0; i < column_amount; i++) {
-                printf("%s: %s\n", headers[i], current_line[i]);
-            }
-            printf("----------------------------\n");
+            printf("%s\n\n\n",headers[0]);
+            printCurrentLine();
         }
     }
-    line_count++;
-    column_count = 0;
 
-    // Wyczyszczenie bieżącej linii
-    for (int i = 0; i < column_amount; i++) {
-        strcpy(current_line[i], "");
-    }
+    line_count++;
+    clean();
 }
 %%
 
@@ -150,7 +201,7 @@ int main(int argc, char **argv) {
         }
     } else {
         // Jeśli argument jest przekazany, otwieramy plik
-        file = fopen(argv[1], "r");501501502
+        file = fopen(argv[1], "r");
         if (!file) {
             perror("Nie udało się otworzyć pliku");
             return 1;
