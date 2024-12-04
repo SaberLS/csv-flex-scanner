@@ -21,8 +21,6 @@ int match_lines[MAX_COLUMNS];
 StringArray headers;
 StringArray current_line;
 
-int ignored_columns[MAX_COLUMNS];
-int ignored_count = 0;
 // Struktura przechowująca filtr
 struct filter {
     int column_I;                // Indeks kolumny
@@ -69,7 +67,7 @@ void printHeaders() {
     printf("\n");
 }
 
-    void clean() {
+void clean() {
     column_count = 0;
 
     // Wyczyszczenie bieżącej linii
@@ -166,35 +164,44 @@ ENDLINE \n
             printActiveFilters();
         }
 
+        // Inicjalizacja tablicy displayed_columns
+        for (int i = 0; i < column_amount; i++) {
+            displayed_columns[i] = i; // Przypisanie indeksów wszystkich kolumn
+        }
+        displayed_count = column_amount; // Początkowo wszystkie kolumny są wyświetlane
+
         while(true){
+            printf("----------------------------\n");
             printf("Podaj numery kolumn które mają zostać zignorowane (wpisz '-1', aby zakończyć):\n");
             printf("Możliwe wartości:\n");
-            printStringArray(&headers);
+            printf("Linia nr: %d\n", line_count + 1);
+            for (int i = 0; i < displayed_count; i++) {
+                int displayedID = displayed_columns[i];
+                printf("%d: %s\n",displayedID, headers.strings[displayedID]);
+            }
+            printf("----------------------------\n");
+
             int column_I = -1;
 
             printf("<numer kolumny>: ");
             scanf("%d", &column_I);
             if (column_I < 0) {
+                break; // Zakończ wprowadzanie
+            }
+
+        // Sprawdzenie, czy podany indeks jest w displayed_columns
+        for (int i = 0; i < displayed_count; i++) {
+            if (displayed_columns[i] == column_I) {
+
+                // Usuń kolumnę z displayed_columns
+                for (int j = i; j < displayed_count - 1; j++) {
+                    displayed_columns[j] = displayed_columns[j + 1];
+                }
+                displayed_count--; // Zmniejsz liczbę wyświetlanych kolumn
                 break;
             }
-
-            ignored_columns[ignored_count] = column_I;
-            ignored_count++;
         }
-
-        for(int i = 0; i < column_amount; i++){
-            bool mark = true;
-            for(int j = 0; j < ignored_count; j++){
-                if(i == ignored_columns[j]){
-                    mark = false;
-                    break;
-                }
-            }
-            if(mark){
-                displayed_columns[displayed_count] = i;
-                displayed_count++;
-            }
-        }
+    }
     } else {
         // Sprawdzenie, czy wiersz spełnia kryteria filtrów
         if (checkLine()) {
