@@ -111,6 +111,30 @@ void fillEmptySapce(StringArray *arr) {
     }
 }
 
+int selectIgnoredColumns() {
+        int column_I = -1;
+
+        printf("<numer kolumny>: ");
+        scanf("%d", &column_I);
+
+        return column_I;
+}
+
+void IgnoreColumn(int column_I) {
+    // Sprawdzenie, czy podany indeks jest w displayed_columns
+    for (int i = 0; i < displayed_count; i++) {
+        if (displayed_columns[i] == column_I) {
+
+            // Usuń kolumnę z displayed_columns
+            for (int j = i; j < displayed_count - 1; j++) {
+                displayed_columns[j] = displayed_columns[j + 1];
+            }
+            displayed_count--; // Zmniejsz liczbę wyświetlanych kolumn
+            break;
+        }
+    }
+}
+
 %}
 
 %option noyywrap
@@ -181,27 +205,15 @@ ENDLINE \n
             }
             printf("----------------------------\n");
 
-            int column_I = -1;
-
-            printf("<numer kolumny>: ");
-            scanf("%d", &column_I);
-            if (column_I < 0) {
-                break; // Zakończ wprowadzanie
-            }
-
-        // Sprawdzenie, czy podany indeks jest w displayed_columns
-        for (int i = 0; i < displayed_count; i++) {
-            if (displayed_columns[i] == column_I) {
-
-                // Usuń kolumnę z displayed_columns
-                for (int j = i; j < displayed_count - 1; j++) {
-                    displayed_columns[j] = displayed_columns[j + 1];
-                }
-                displayed_count--; // Zmniejsz liczbę wyświetlanych kolumn
+            int column_I = selectIgnoredColumns();
+            if(column_I < 0){
                 break;
-            }
+            };
+
+            IgnoreColumn(column_I);
         }
-    }
+
+
     } else {
         // Sprawdzenie, czy wiersz spełnia kryteria filtrów
         if (checkLine()) {
